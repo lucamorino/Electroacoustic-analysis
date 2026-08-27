@@ -1,0 +1,31 @@
+# Sustained, slowly-evolving material: a long constant chop with overlap, and
+# the full psychoacoustic set.  Start here for drone / texture pieces.
+audio:
+  sample_rate: 44100
+  downmix: mix
+
+segmentation:
+  method: fixed
+  window: 5.0
+  hop: 2.5            # 50% overlap -> a smoother trajectory through the piece
+  min_duration: 1.0
+  max_duration: null
+
+essentia:
+  groups: [dynamics, spectral, noisiness, mfcc, barkbands, erbbands]
+  frame_size: 4096    # finer frequency resolution for sustained sound
+  hop_size: 2048
+  stats: [mean, stdev, median, min, max, dmean, dvar]
+
+psychoacoustics:
+  enabled: true
+  metrics: [loudness, sharpness, roughness, tonality]
+  spl_full_scale: 94.0
+  field_type: free
+  max_duration: 10.0  # cap the slow metrics; 10 s is plenty for a texture
+
+output:
+  directory: analysis
+  precision: 6
+
+jobs: 4

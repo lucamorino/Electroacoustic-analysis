@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+analysis/
+*.wav
+*.aif
+*.aiff
+*.flac
+.venv/
