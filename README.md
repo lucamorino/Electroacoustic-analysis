@@ -10,8 +10,8 @@ happens is a swappable decision — a constant chop, detected onsets, timbral
 change points, or your own markers.
 
 Output is one CSV row per segment, one column per descriptor, plus a JSON
-sidecar with the whole configuration and a piece-level summary, plus an
-Audacity label track so you can audition the segmentation.
+sidecar with the whole configuration and a piece-level summary, plus label
+tracks for Audacity and REAPER so you can audition the segmentation.
 
 Three scripts, run in that order:
 
@@ -221,9 +221,10 @@ It prints a report and writes four plots plus three files:
   components, faceted one panel per cluster when there are more than three.
 - **`.clusters.csv`**, **`.neighbours.csv`** — cluster and silhouette per
   segment; the closest few segments to every segment.
-- **`.clusters.labels.txt`** — an Audacity label track named by cluster. This
-  is the one to keep: load it beside the audio and the form is annotated, so
-  you can listen to what the clustering actually claims.
+- **`.clusters.labels.txt`**, **`.clusters.reaper.csv`** — a label track named
+  (and, in REAPER, coloured) by cluster. This is the one to keep: load it
+  beside the audio and the form is annotated, so you can listen to what the
+  clustering actually claims.
 
 Two things the report tells you that matter more than the labels:
 
@@ -248,7 +249,41 @@ For `piece.wav` in `-o analysis/`:
   whole-file descriptors), the full `config` used, and a duration-weighted
   `summary` over the piece. The weighting matters under onset segmentation,
   where a hundred 40 ms clicks would otherwise outvote the drone they sit on.
-- `piece.labels.txt` — Audacity label track of the segmentation.
+- `piece.labels.txt`, `piece.reaper.csv` — the segmentation as label tracks
+  (see below).
+
+## Getting it back into an editor
+
+Every label track is written for both Audacity and REAPER, because reading a
+segmentation off a plot is no substitute for hearing what it claims. Pick with
+`--label-format` (on `analyse.py` and `similarity.py` alike):
+
+| format | file | how to load it |
+| --- | --- | --- |
+| `audacity` | `.labels.txt` | File ▸ Import ▸ Labels… |
+| `reaper` | `.reaper.csv` | Region/Marker Manager ▸ Import…, or the *Markers/Regions: Import markers/regions from file* action |
+| `reaper-script` | `.reaper.lua` | Actions ▸ Load ReaScript…, then Run |
+
+The default is `audacity reaper`. Segments become REAPER **regions**, not point
+markers — a region has an extent, which is what a segment is, and it shows on
+the ruler as a block you can loop and rename. `--label-markers` gives point
+markers instead.
+
+`reaper-script` writes the same content as a ReaScript that goes through
+REAPER's documented API rather than a file format. Two reasons to prefer it:
+it is immune to any difference in how a REAPER version parses the CSV, and it
+carries the **cluster colours**, so `similarity.py`'s regions arrive on the
+ruler in the same colours as the timeline plot. The script has an `OFFSET` at
+the top for when the audio does not start at 00:00 on your timeline, and a
+`CLEAR_EXISTING` switch.
+
+The cluster label track from `similarity.py` merges consecutive segments of the
+same cluster into one region, so a 30-segment piece arrives as the handful of
+sections its form actually has rather than 30 adjacent slices
+(`--no-merge-labels` keeps them separate).
+
+Times are always absolute in the source file, so `--start`/`--duration`
+excerpts land in the right place on the timeline.
 
 ## Layout
 
@@ -265,6 +300,7 @@ eaa/descriptors_essentia.py   Essentia descriptor groups
 eaa/descriptors_psycho.py     MoSQITo metrics
 eaa/pipeline.py               orchestration, parallelism, summary
 eaa/export.py                 CSV / JSON / labels
+eaa/labels.py                 Audacity and REAPER label writers
 eaa/cli.py                    argument parsing
 
 eaa/table.py                  reading the CSV back, resolving descriptor globs

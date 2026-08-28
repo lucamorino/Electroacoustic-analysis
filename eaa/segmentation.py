@@ -325,9 +325,20 @@ def _split_long(bounds: Bounds, max_duration: Optional[float]) -> Bounds:
     return out
 
 
-def write_labels(segments: Sequence[Segment], path: str, offset: float = 0.0) -> None:
-    """Write an Audacity label track so the slicing can be inspected by ear."""
-    with open(path, "w", encoding="utf-8") as fh:
-        for seg in segments:
-            name = seg.label or f"{seg.index:04d}"
-            fh.write(f"{seg.start + offset:.6f}\t{seg.end + offset:.6f}\t{name}\n")
+def write_labels(
+    segments: Sequence[Segment],
+    base: str,
+    offset: float = 0.0,
+    formats: Sequence[str] = ("audacity",),
+    regions: bool = True,
+) -> List[str]:
+    """Write the slicing to label tracks, so it can be inspected by ear.
+
+    ``base`` is a path without a suffix; each format appends its own.
+    """
+    from .labels import from_segments
+    from .labels import write as write_markers
+
+    return write_markers(
+        from_segments(segments, offset=offset), base, formats, regions=regions
+    )

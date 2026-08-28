@@ -65,6 +65,14 @@ def build_parser() -> argparse.ArgumentParser:
                         help="closest segments to report for each segment")
     parser.add_argument("--seed", type=int, default=0, help="k-means seeding")
     parser.add_argument("--theme", choices=["light", "dark"], default="light")
+    parser.add_argument("--label-format", nargs="+", metavar="FORMAT",
+                        default=["audacity", "reaper"],
+                        choices=["audacity", "reaper", "reaper-script"],
+                        help="editors to write the cluster labels for "
+                             "(default: audacity reaper)")
+    parser.add_argument("--no-merge-labels", action="store_true",
+                        help="keep one label per segment instead of merging "
+                             "consecutive segments of the same cluster")
     parser.add_argument("--no-plots", action="store_true")
     parser.add_argument("--save-matrix", action="store_true",
                         help="also write the distance matrix as .npy")
@@ -118,14 +126,36 @@ def _write_neighbours(result, df, path: str, count: int) -> None:
                 ])
 
 
-def _write_labels(result, df, path: str) -> None:
-    """Audacity label track named by cluster: the form, ready to audition."""
-    with open(path, "w", encoding="utf-8") as fh:
-        for i in range(len(df)):
-            fh.write(
-                f"{float(df['start'].iloc[i]):.6f}\t{float(df['end'].iloc[i]):.6f}\t"
-                f"c{int(result.labels[i])}\n"
-            )
+def _write_labels(result, df, base: str, formats, theme: str,
+                  merge: bool = True) -> List[str]:
+    """Label tracks named and coloured by cluster: the form, ready to audition.
+
+    The colours match the plots, so a region in REAPER and a block on the
+    timeline PNG are recognisably the same cluster.
+    """
+    from eaa import plotstyle
+    from eaa.labels import Marker
+    from eaa.labels import write as write_markers
+
+    slots = plotstyle.palette(theme)["series"]
+    ids = sorted(set(int(v) for v in result.labels))
+    colors = {
+        cluster: (slots[i] if i < len(slots) else None)
+        for i, cluster in enumerate(ids)
+    }
+    markers = []
+    for i in range(len(df)):
+        cluster = int(result.labels[i])
+        start = float(df["start"].iloc[i])
+        end = float(df["end"].iloc[i])
+        # Consecutive segments of the same cluster become one region: what you
+        # want on a DAW ruler is the section, not thirty adjacent slices of it.
+        if merge and markers and markers[-1].name == f"c{cluster}":
+            markers[-1] = Marker(markers[-1].start, end, f"c{cluster}",
+                                 colors[cluster])
+        else:
+            markers.append(Marker(start, end, f"c{cluster}", colors[cluster]))
+    return write_markers(markers, base, formats, regions=True)
 
 
 def _report(result, df) -> None:
@@ -197,8 +227,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     written.append(base + ".clusters.csv")
     _write_neighbours(result, df, base + ".neighbours.csv", args.neighbours)
     written.append(base + ".neighbours.csv")
-    _write_labels(result, df, base + ".clusters.labels.txt")
-    written.append(base + ".clusters.labels.txt")
+    written.extend(
+        _write_labels(result, df, base + ".clusters", args.label_format,
+                      args.theme, merge=not args.no_merge_labels)
+    )
     if args.save_matrix:
         np.save(base + ".distances.npy", result.distances)
         written.append(base + ".distances.npy")

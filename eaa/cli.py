@@ -126,6 +126,12 @@ def build_parser() -> argparse.ArgumentParser:
     out.add_argument("--no-csv", action="store_true", default=None)
     out.add_argument("--no-json", action="store_true", default=None)
     out.add_argument("--no-labels", action="store_true", default=None)
+    out.add_argument("--label-format", nargs="+", metavar="FORMAT",
+                     choices=["audacity", "reaper", "reaper-script"],
+                     help="editors to write the segmentation for "
+                          "(default: audacity reaper)")
+    out.add_argument("--label-markers", action="store_true", default=None,
+                     help="write REAPER point markers instead of regions")
 
     run = parser.add_argument_group("run")
     run.add_argument("-j", "--jobs", type=int,
@@ -192,7 +198,10 @@ def config_from_args(args: argparse.Namespace) -> AnalysisConfig:
         "directory": args.directory,
         "basename": args.basename,
         "precision": args.precision,
+        "label_formats": args.label_format,
     })
+    if args.label_markers:
+        cfg.output.label_regions = False
     if args.no_csv:
         cfg.output.csv = False
     if args.no_json:
@@ -236,6 +245,11 @@ def _print_listing() -> None:
         print(f"  {name}")
     print("\naggregation statistics:")
     print("  " + ", ".join(DEFAULT_STATS) + ", dvar2, dmean2, var, cov, icov")
+    from .labels import available as label_formats
+
+    print("\nlabel formats:")
+    for name in label_formats():
+        print(f"  {name}")
 
 
 def main(argv: Optional[List[str]] = None) -> int:
@@ -303,6 +317,9 @@ def _dry_run(path: str, cfg: AnalysisConfig, audio_mod, seg_mod) -> None:
     if cfg.output.labels:
         os.makedirs(cfg.output.directory, exist_ok=True)
         base = cfg.output.basename or os.path.splitext(os.path.basename(path))[0]
-        target = os.path.join(cfg.output.directory, f"{base}.labels.txt")
-        seg_mod.write_labels(segments, target, offset=audio.offset)
-        print(f"  wrote {target}")
+        for target in seg_mod.write_labels(
+            segments, os.path.join(cfg.output.directory, base),
+            offset=audio.offset, formats=cfg.output.label_formats,
+            regions=cfg.output.label_regions,
+        ):
+            print(f"  wrote {target}")

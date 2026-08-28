@@ -36,9 +36,15 @@ def write(result: AnalysisResult, cfg: OutputConfig) -> List[str]:
         written.append(path)
 
     if cfg.labels:
-        path = os.path.join(cfg.directory, f"{base}.labels.txt")
-        write_labels(result.segments, path, offset=result.metadata.get("offset", 0.0))
-        written.append(path)
+        written.extend(
+            write_labels(
+                result.segments,
+                os.path.join(cfg.directory, base),
+                offset=result.metadata.get("offset", 0.0),
+                formats=cfg.label_formats,
+                regions=cfg.label_regions,
+            )
+        )
 
     for path in written:
         log.info("wrote %s", path)

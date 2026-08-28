@@ -211,9 +211,16 @@ class OutputConfig:
     basename: Optional[str] = None
     csv: bool = True
     json: bool = True
-    #: Write the segment boundaries as an Audacity label track, so the
-    #: segmentation can be checked (and edited) back in an audio editor.
+    #: Write the segment boundaries out to an editor, so the segmentation can
+    #: be checked (and edited) by ear.
     labels: bool = True
+    #: Which editors: 'audacity', 'reaper' (marker/region CSV), and/or
+    #: 'reaper-script' (the same as a ReaScript, which also carries colours).
+    label_formats: List[str] = field(
+        default_factory=lambda: ["audacity", "reaper"]
+    )
+    #: Segments become REAPER regions rather than point markers.
+    label_regions: bool = True
     #: Round floats to this many decimals in the outputs (None = full precision).
     precision: Optional[int] = 6
 
@@ -283,6 +290,14 @@ class AnalysisConfig:
             raise ValueError(
                 f"unknown psychoacoustic metric(s): {sorted(unknown)}; "
                 f"available: {list(PSYCHO_METRICS)}"
+            )
+        from .labels import available as label_formats
+
+        unknown = set(self.output.label_formats) - set(label_formats())
+        if unknown:
+            raise ValueError(
+                f"unknown label format(s): {sorted(unknown)}; "
+                f"available: {label_formats()}"
             )
         if self.jobs < 1:
             raise ValueError("jobs must be >= 1")
