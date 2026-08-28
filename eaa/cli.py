@@ -15,6 +15,7 @@ import glob
 import logging
 import os
 import sys
+import signal
 from typing import List, Optional
 
 from . import __version__
@@ -238,6 +239,7 @@ def _print_listing() -> None:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
     parser = build_parser()
     args = parser.parse_args(argv)
 
