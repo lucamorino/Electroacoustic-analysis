@@ -1,0 +1,10 @@
+# Core analysis
+essentia>=2.1b6.dev            # signal descriptors, onset detection, SBIC
+mosqito>=1.2                   # psychoacoustic metrics (ISO 532-1, DIN 45692, ECMA-74)
+numpy>=1.21
+scipy>=1.7                     # resampling, distances, hierarchical clustering
+pandas>=1.3                    # reading the analysis CSV back in
+matplotlib>=3.5                # plots (and imported by MoSQITo at import time)
+
+# Optional
+PyYAML>=6.0                    # only needed for YAML config files (.json works without)

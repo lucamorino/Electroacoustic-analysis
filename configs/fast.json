@@ -1,0 +1,7 @@
+{
+  "segmentation": {"method": "fixed", "window": 1.0},
+  "essentia": {"groups": ["dynamics", "spectral"], "stats": ["mean", "stdev"]},
+  "psychoacoustics": {"enabled": false},
+  "output": {"directory": "analysis", "labels": false},
+  "jobs": 1
+}
