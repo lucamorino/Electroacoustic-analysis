@@ -20,6 +20,7 @@ Three scripts, run in that order:
 | `analyse.py` | audio → descriptors, one row per segment |
 | `visualise.py` | that CSV → plots you can show and hide descriptors in |
 | `similarity.py` | that CSV → which segments resemble each other, and the form that implies |
+| `batch_extract.sh` | a folder of audio → one table of a fixed descriptor set |
 
 > **Status: draft.** The structure is in place and everything below runs, but
 > the descriptor selection is a starting point for discussion rather than a
@@ -252,6 +253,69 @@ For `piece.wav` in `-o analysis/`:
 - `piece.labels.txt`, `piece.reaper.csv` — the segmentation as label tracks
   (see below).
 
+## Batch extraction
+
+`batch_extract.sh` runs the analysis over a folder and pulls out one fixed set
+of descriptors, for when you want a comparable table across many pieces rather
+than everything about one.
+
+```bash
+./batch_extract.sh recordings/                          # defaults: 2 s fixed chop
+./batch_extract.sh recordings/ -o dataset/ -s onset -j 8
+./batch_extract.sh recordings/ -- --duration 120        # anything after -- goes to analyse.py
+```
+
+It writes:
+
+```
+dataset/full/<name>.segments.csv    the complete analysis for each file
+dataset/selected/<name>.csv         just the chosen descriptors, per segment
+dataset/all_segments.csv            every file's segments in one table
+dataset/all_files.csv               one row per file, duration-weighted means
+```
+
+Both combined tables are produced because both readings of "extract in batch"
+are useful: `all_segments.csv` keeps the time detail with a `file` column,
+`all_files.csv` reduces each piece to a single row for comparing across a
+collection. The per-file means are duration-weighted, so under onset
+segmentation a hundred short segments cannot outvote the long one they sit
+inside.
+
+The descriptor list is one array at the top of the script, as
+`full.column.name:output-name` pairs — edit it there and nothing else changes.
+It ships with:
+
+| output name | column |
+| --- | --- |
+| `rms.mean` | `dynamics.rms.mean` |
+| `centroid.mean` | `spectral.centroid.mean` |
+| `flatness.mean` | `spectral.flatness.mean` |
+| `flux.mean` | `spectral.flux.mean` |
+| `loudness.mean` | `psycho.loudness.mean` (sone) |
+| `sharpness.mean` | `psycho.sharpness.mean` |
+| `roughness.mean` | `psycho.roughness.mean` |
+| `dynamics.dynamic_complexity` | `dynamics.dynamic_complexity` |
+| `crest.mean` | `spectral.crest.mean` |
+| `complexity.mean` | `spectral.complexity.mean` |
+| `dissonance.mean` | `noisiness.dissonance.mean` |
+| `tonality.n_tones` | `psycho.tonality.n_tones` |
+| `tonality.strongest_tone_Hz` | `psycho.tonality.strongest_tone_Hz` |
+| `f0.max` | `noisiness.f0.max` |
+| `dynamics.loudness_dB` | `dynamics.loudness_dB` |
+
+Only the three Essentia groups and four MoSQITo metrics that list needs are
+computed, which is the single biggest speed-up available since the
+psychoacoustic models dominate the runtime.
+
+Two things worth knowing. **Re-running skips files whose analysis is already
+newer than the audio**, so an interrupted batch is restarted by running the
+same command again (`--force` overrides). And a descriptor can legitimately be
+absent from a file: `tonality.strongest_tone_Hz` only exists where a prominent
+tone was found, so it comes out blank on material with `tonality.n_tones` of 0.
+The script warns on stderr and leaves the field empty rather than failing, and
+the column is always present in the combined tables so the shape stays the same
+across the collection.
+
 ## Getting it back into an editor
 
 Every label track is written for both Audacity and REAPER, because reading a
@@ -291,6 +355,7 @@ excerpts land in the right place on the timeline.
 analyse.py                    audio -> descriptors (== python -m eaa)
 visualise.py                  CSV -> plots, static or interactive
 similarity.py                 CSV -> resemblance, clusters, form
+batch_extract.sh              folder -> one table of a fixed descriptor set
 configs/                      example configs: texture.yaml, gesture.yaml, fast.json
 
 eaa/config.py                 every knob, as dataclasses
