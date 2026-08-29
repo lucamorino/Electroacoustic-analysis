@@ -11,7 +11,8 @@
 #   full/<name>.segments.csv    the complete analysis for each file
 #   selected/<name>.csv         just the descriptors below, per segment
 #   all_segments.csv            every file's segments in one table
-#   all_files.csv               one row per file (duration-weighted means)
+#   all_files.csv               one row per file (duration-weighted means over
+#                               the span the segments cover)
 #
 # The full CSVs are kept because visualise.py and similarity.py read them;
 # delete the full/ directory afterwards if you only want the extract.
@@ -210,7 +211,7 @@ awk -v SHORT="$SHORT_NAMES" '
   BEGIN { FS = ","; OFS = ","; n = split(SHORT, short, " ") }
   NR == 1 {
     for (i = 1; i <= NF; i++) col[$i] = i
-    di = col["duration"]
+    si = col["start"]; ei = col["end"]; di = col["duration"]
     for (k = 1; k <= n; k++) idx[k] = col[short[k]]
     header = "file,n_segments,duration"
     for (k = 1; k <= n; k++) header = header "," short[k]
@@ -221,7 +222,11 @@ awk -v SHORT="$SHORT_NAMES" '
     f = $1
     if (!(f in seen)) { seen[f] = 1; order[++count] = f }
     d = numeric($di) ? $di + 0 : 0
-    segments[f]++; total[f] += d
+    segments[f]++
+    # The span the segments cover, not the sum of their durations: with an
+    # overlapping hop the durations sum to more than the piece is long.
+    if (numeric($si) && (!(f in first) || $si + 0 < first[f])) first[f] = $si + 0
+    if (numeric($ei) && (!(f in last) || $ei + 0 > last[f])) last[f] = $ei + 0
     for (k = 1; k <= n; k++) {
       v = $(idx[k])
       if (numeric(v)) { sum[f, k] += v * d; weight[f, k] += d }
@@ -230,7 +235,7 @@ awk -v SHORT="$SHORT_NAMES" '
   END {
     for (i = 1; i <= count; i++) {
       f = order[i]
-      row = f OFS segments[f] OFS sprintf("%.4f", total[f])
+      row = f OFS segments[f] OFS sprintf("%.4f", last[f] - first[f])
       for (k = 1; k <= n; k++)
         row = row OFS (weight[f, k] > 0 ? sprintf("%.6g", sum[f, k] / weight[f, k]) : "")
       print row

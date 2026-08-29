@@ -307,14 +307,24 @@ Only the three Essentia groups and four MoSQITo metrics that list needs are
 computed, which is the single biggest speed-up available since the
 psychoacoustic models dominate the runtime.
 
-Two things worth knowing. **Re-running skips files whose analysis is already
-newer than the audio**, so an interrupted batch is restarted by running the
-same command again (`--force` overrides). And a descriptor can legitimately be
-absent from a file: `tonality.strongest_tone_Hz` only exists where a prominent
-tone was found, so it comes out blank on material with `tonality.n_tones` of 0.
-The script warns on stderr and leaves the field empty rather than failing, and
-the column is always present in the combined tables so the shape stays the same
-across the collection.
+Three things worth knowing.
+
+**Re-running skips files whose analysis is already newer than the audio**, so
+an interrupted batch is restarted by running the same command again (`--force`
+overrides).
+
+**A descriptor can legitimately be absent from a file.**
+`tonality.strongest_tone_Hz` only exists where a prominent tone was found, so
+it comes out blank on material whose `tonality.n_tones` is 0. The script warns
+on stderr and leaves the field empty rather than failing, and the column is
+always present in the combined tables so the shape stays the same across the
+collection.
+
+**Near-silent segments produce degenerate values, not errors.** Below roughly
+`rms.mean` 1e-3 the YIN estimator has nothing to lock onto and `f0.max` pins to
+the Nyquist frequency, while the psychoacoustic metrics go to zero. Those rows
+are real measurements of silence, but they will drag a mean around — filter on
+`rms.mean` before averaging if a piece has silent head or tail.
 
 ## Getting it back into an editor
 
