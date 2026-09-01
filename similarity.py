@@ -66,10 +66,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--seed", type=int, default=0, help="k-means seeding")
     parser.add_argument("--theme", choices=["light", "dark"], default="light")
     parser.add_argument("--label-format", nargs="+", metavar="FORMAT",
-                        default=["audacity", "reaper"],
+                        default=["audacity"],
                         choices=["audacity", "reaper", "reaper-script"],
                         help="editors to write the cluster labels for "
-                             "(default: audacity reaper)")
+                             "(default: audacity)")
+    parser.add_argument("--reaper", action="store_true",
+                        help="also write the clusters as a REAPER "
+                             "marker/region CSV, coloured by cluster")
+    parser.add_argument("--reaper-script", action="store_true",
+                        help="also write them as a REAPER ReaScript")
     parser.add_argument("--no-merge-labels", action="store_true",
                         help="keep one label per segment instead of merging "
                              "consecutive segments of the same cluster")
@@ -206,6 +211,11 @@ def main(argv: Optional[List[str]] = None) -> int:
                 print(f"  {name}")
         return 0
 
+    label_formats = list(args.label_format)
+    for flag, fmt in ((args.reaper, "reaper"), (args.reaper_script, "reaper-script")):
+        if flag and fmt not in label_formats:
+            label_formats.append(fmt)
+
     features = table.select(df, args.features, DEFAULT_FEATURES)
     if not features:
         parser.error("no descriptors matched; try --list to see what is available")
@@ -228,7 +238,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     _write_neighbours(result, df, base + ".neighbours.csv", args.neighbours)
     written.append(base + ".neighbours.csv")
     written.extend(
-        _write_labels(result, df, base + ".clusters", args.label_format,
+        _write_labels(result, df, base + ".clusters", label_formats,
                       args.theme, merge=not args.no_merge_labels)
     )
     if args.save_matrix:

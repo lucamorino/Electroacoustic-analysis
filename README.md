@@ -328,9 +328,20 @@ are real measurements of silence, but they will drag a mean around — filter on
 
 ## Getting it back into an editor
 
-Every label track is written for both Audacity and REAPER, because reading a
-segmentation off a plot is no substitute for hearing what it claims. Pick with
-`--label-format` (on `analyse.py` and `similarity.py` alike):
+Reading a segmentation off a plot is no substitute for hearing what it claims,
+so both `analyse.py` and `similarity.py` write label tracks. Audacity labels
+are written by default; REAPER output is opt-in:
+
+```bash
+./analyse.py piece.wav --reaper                 # adds piece.reaper.csv
+./analyse.py piece.wav --reaper --reaper-script # adds piece.reaper.lua too
+./similarity.py piece.segments.csv --reaper     # clusters, coloured
+```
+
+`--label-format` sets the list outright when you want only one
+(`--label-format reaper`); `--reaper` and `--reaper-script` add to whatever is
+in effect, so the two compose. In a config file the same choice is
+`output.label_formats`. `--no-labels` suppresses all of it.
 
 | format | file | how to load it |
 | --- | --- | --- |
@@ -338,8 +349,7 @@ segmentation off a plot is no substitute for hearing what it claims. Pick with
 | `reaper` | `.reaper.csv` | Region/Marker Manager ▸ Import…, or the *Markers/Regions: Import markers/regions from file* action |
 | `reaper-script` | `.reaper.lua` | Actions ▸ Load ReaScript…, then Run |
 
-The default is `audacity reaper`. Segments become REAPER **regions**, not point
-markers — a region has an extent, which is what a segment is, and it shows on
+Segments become REAPER **regions**, not point markers — a region has an extent, which is what a segment is, and it shows on
 the ruler as a block you can loop and rename. `--label-markers` gives point
 markers instead.
 

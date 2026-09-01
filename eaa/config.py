@@ -216,9 +216,8 @@ class OutputConfig:
     labels: bool = True
     #: Which editors: 'audacity', 'reaper' (marker/region CSV), and/or
     #: 'reaper-script' (the same as a ReaScript, which also carries colours).
-    label_formats: List[str] = field(
-        default_factory=lambda: ["audacity", "reaper"]
-    )
+    #: REAPER output is opt-in -- see --reaper / --reaper-script.
+    label_formats: List[str] = field(default_factory=lambda: ["audacity"])
     #: Segments become REAPER regions rather than point markers.
     label_regions: bool = True
     #: Round floats to this many decimals in the outputs (None = full precision).
