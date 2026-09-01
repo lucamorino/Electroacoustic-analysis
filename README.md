@@ -222,10 +222,10 @@ It prints a report and writes four plots plus three files:
   components, faceted one panel per cluster when there are more than three.
 - **`.clusters.csv`**, **`.neighbours.csv`** — cluster and silhouette per
   segment; the closest few segments to every segment.
-- **`.clusters.labels.txt`**, **`.clusters.reaper.csv`** — a label track named
-  (and, in REAPER, coloured) by cluster. This is the one to keep: load it
-  beside the audio and the form is annotated, so you can listen to what the
-  clustering actually claims.
+- **`.clusters.labels.txt`** (and `.clusters.reaper.csv` with `--reaper`) — a
+  label track named, and in REAPER coloured, by cluster. This is the one to
+  keep: load it beside the audio and the form is annotated, so you can listen
+  to what the clustering actually claims.
 
 Two things the report tells you that matter more than the labels:
 
@@ -250,8 +250,8 @@ For `piece.wav` in `-o analysis/`:
   whole-file descriptors), the full `config` used, and a duration-weighted
   `summary` over the piece. The weighting matters under onset segmentation,
   where a hundred 40 ms clicks would otherwise outvote the drone they sit on.
-- `piece.labels.txt`, `piece.reaper.csv` — the segmentation as label tracks
-  (see below).
+- `piece.labels.txt` — the segmentation as an Audacity label track;
+  `--reaper` adds `piece.reaper.csv` (see below).
 
 ## Batch extraction
 
