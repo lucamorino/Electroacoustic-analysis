@@ -21,6 +21,11 @@ Three scripts, run in that order:
 | `visualise.py` | that CSV → plots you can show and hide descriptors in |
 | `similarity.py` | that CSV → which segments resemble each other, and the form that implies |
 
+A second extraction route, in SuperCollider with Nick Collins's SCMIR library
+and following his "Noise Music Information Retrieval" (2013), is in
+[`supercollider/`](supercollider/README.md). It writes CSVs the two Python
+viewers read.
+
 > **Status: draft.** The structure is in place and everything below runs, but
 > the descriptor selection is a starting point for discussion rather than a
 > settled analytical position. See *Where this is deliberately unfinished*.
