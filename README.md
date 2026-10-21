@@ -20,6 +20,7 @@ Three scripts, run in that order:
 | `analyse.py` | audio → descriptors, one row per segment |
 | `visualise.py` | that CSV → plots you can show and hide descriptors in |
 | `similarity.py` | that CSV → which segments resemble each other, and the form that implies |
+| `batch_extract.sh` | a folder of audio → one table of a fixed descriptor set |
 
 > **Status: draft.** The structure is in place and everything below runs, but
 > the descriptor selection is a starting point for discussion rather than a
@@ -221,10 +222,10 @@ It prints a report and writes four plots plus three files:
   components, faceted one panel per cluster when there are more than three.
 - **`.clusters.csv`**, **`.neighbours.csv`** — cluster and silhouette per
   segment; the closest few segments to every segment.
-- **`.clusters.labels.txt`**, **`.clusters.reaper.csv`** — a label track named
-  (and, in REAPER, coloured) by cluster. This is the one to keep: load it
-  beside the audio and the form is annotated, so you can listen to what the
-  clustering actually claims.
+- **`.clusters.labels.txt`** (and `.clusters.reaper.csv` with `--reaper`) — a
+  label track named, and in REAPER coloured, by cluster. This is the one to
+  keep: load it beside the audio and the form is annotated, so you can listen
+  to what the clustering actually claims.
 
 Two things the report tells you that matter more than the labels:
 
@@ -249,14 +250,98 @@ For `piece.wav` in `-o analysis/`:
   whole-file descriptors), the full `config` used, and a duration-weighted
   `summary` over the piece. The weighting matters under onset segmentation,
   where a hundred 40 ms clicks would otherwise outvote the drone they sit on.
-- `piece.labels.txt`, `piece.reaper.csv` — the segmentation as label tracks
-  (see below).
+- `piece.labels.txt` — the segmentation as an Audacity label track;
+  `--reaper` adds `piece.reaper.csv` (see below).
+
+## Batch extraction
+
+`batch_extract.sh` runs the analysis over a folder and pulls out one fixed set
+of descriptors, for when you want a comparable table across many pieces rather
+than everything about one.
+
+```bash
+./batch_extract.sh recordings/                          # defaults: 2 s fixed chop
+./batch_extract.sh recordings/ -o dataset/ -s onset -j 8
+./batch_extract.sh recordings/ -- --duration 120        # anything after -- goes to analyse.py
+```
+
+It writes:
+
+```
+dataset/full/<name>.segments.csv    the complete analysis for each file
+dataset/selected/<name>.csv         just the chosen descriptors, per segment
+dataset/all_segments.csv            every file's segments in one table
+dataset/all_files.csv               one row per file, duration-weighted means
+```
+
+Both combined tables are produced because both readings of "extract in batch"
+are useful: `all_segments.csv` keeps the time detail with a `file` column,
+`all_files.csv` reduces each piece to a single row for comparing across a
+collection. The per-file means are duration-weighted, so under onset
+segmentation a hundred short segments cannot outvote the long one they sit
+inside.
+
+The descriptor list is one array at the top of the script, as
+`full.column.name:output-name` pairs — edit it there and nothing else changes.
+It ships with:
+
+| output name | column |
+| --- | --- |
+| `rms.mean` | `dynamics.rms.mean` |
+| `centroid.mean` | `spectral.centroid.mean` |
+| `flatness.mean` | `spectral.flatness.mean` |
+| `flux.mean` | `spectral.flux.mean` |
+| `loudness.mean` | `psycho.loudness.mean` (sone) |
+| `sharpness.mean` | `psycho.sharpness.mean` |
+| `roughness.mean` | `psycho.roughness.mean` |
+| `dynamics.dynamic_complexity` | `dynamics.dynamic_complexity` |
+| `crest.mean` | `spectral.crest.mean` |
+| `complexity.mean` | `spectral.complexity.mean` |
+| `dissonance.mean` | `noisiness.dissonance.mean` |
+| `tonality.n_tones` | `psycho.tonality.n_tones` |
+| `tonality.strongest_tone_Hz` | `psycho.tonality.strongest_tone_Hz` |
+| `f0.max` | `noisiness.f0.max` |
+| `dynamics.loudness_dB` | `dynamics.loudness_dB` |
+
+Only the three Essentia groups and four MoSQITo metrics that list needs are
+computed, which is the single biggest speed-up available since the
+psychoacoustic models dominate the runtime.
+
+Three things worth knowing.
+
+**Re-running skips files whose analysis is already newer than the audio**, so
+an interrupted batch is restarted by running the same command again (`--force`
+overrides).
+
+**A descriptor can legitimately be absent from a file.**
+`tonality.strongest_tone_Hz` only exists where a prominent tone was found, so
+it comes out blank on material whose `tonality.n_tones` is 0. The script warns
+on stderr and leaves the field empty rather than failing, and the column is
+always present in the combined tables so the shape stays the same across the
+collection.
+
+**Near-silent segments produce degenerate values, not errors.** Below roughly
+`rms.mean` 1e-3 the YIN estimator has nothing to lock onto and `f0.max` pins to
+the Nyquist frequency, while the psychoacoustic metrics go to zero. Those rows
+are real measurements of silence, but they will drag a mean around — filter on
+`rms.mean` before averaging if a piece has silent head or tail.
 
 ## Getting it back into an editor
 
-Every label track is written for both Audacity and REAPER, because reading a
-segmentation off a plot is no substitute for hearing what it claims. Pick with
-`--label-format` (on `analyse.py` and `similarity.py` alike):
+Reading a segmentation off a plot is no substitute for hearing what it claims,
+so both `analyse.py` and `similarity.py` write label tracks. Audacity labels
+are written by default; REAPER output is opt-in:
+
+```bash
+./analyse.py piece.wav --reaper                 # adds piece.reaper.csv
+./analyse.py piece.wav --reaper --reaper-script # adds piece.reaper.lua too
+./similarity.py piece.segments.csv --reaper     # clusters, coloured
+```
+
+`--label-format` sets the list outright when you want only one
+(`--label-format reaper`); `--reaper` and `--reaper-script` add to whatever is
+in effect, so the two compose. In a config file the same choice is
+`output.label_formats`. `--no-labels` suppresses all of it.
 
 | format | file | how to load it |
 | --- | --- | --- |
@@ -264,8 +349,7 @@ segmentation off a plot is no substitute for hearing what it claims. Pick with
 | `reaper` | `.reaper.csv` | Region/Marker Manager ▸ Import…, or the *Markers/Regions: Import markers/regions from file* action |
 | `reaper-script` | `.reaper.lua` | Actions ▸ Load ReaScript…, then Run |
 
-The default is `audacity reaper`. Segments become REAPER **regions**, not point
-markers — a region has an extent, which is what a segment is, and it shows on
+Segments become REAPER **regions**, not point markers — a region has an extent, which is what a segment is, and it shows on
 the ruler as a block you can loop and rename. `--label-markers` gives point
 markers instead.
 
@@ -291,6 +375,7 @@ excerpts land in the right place on the timeline.
 analyse.py                    audio -> descriptors (== python -m eaa)
 visualise.py                  CSV -> plots, static or interactive
 similarity.py                 CSV -> resemblance, clusters, form
+batch_extract.sh              folder -> one table of a fixed descriptor set
 configs/                      example configs: texture.yaml, gesture.yaml, fast.json
 
 eaa/config.py                 every knob, as dataclasses

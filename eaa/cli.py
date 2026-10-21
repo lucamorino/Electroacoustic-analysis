@@ -129,7 +129,14 @@ def build_parser() -> argparse.ArgumentParser:
     out.add_argument("--label-format", nargs="+", metavar="FORMAT",
                      choices=["audacity", "reaper", "reaper-script"],
                      help="editors to write the segmentation for "
-                          "(default: audacity reaper)")
+                          "(default: audacity)")
+    out.add_argument("--reaper", action="store_true", default=None,
+                     help="also write the segmentation as a REAPER "
+                          "marker/region CSV (.reaper.csv)")
+    out.add_argument("--reaper-script", action="store_true", default=None,
+                     help="also write it as a REAPER ReaScript (.reaper.lua), "
+                          "which carries colours and goes through REAPER's API "
+                          "rather than a file format")
     out.add_argument("--label-markers", action="store_true", default=None,
                      help="write REAPER point markers instead of regions")
 
@@ -202,6 +209,11 @@ def config_from_args(args: argparse.Namespace) -> AnalysisConfig:
     })
     if args.label_markers:
         cfg.output.label_regions = False
+    # --reaper / --reaper-script add to whatever set is in effect, so they
+    # compose with an explicit --label-format as well as with the default.
+    for flag, fmt in ((args.reaper, "reaper"), (args.reaper_script, "reaper-script")):
+        if flag and fmt not in cfg.output.label_formats:
+            cfg.output.label_formats = list(cfg.output.label_formats) + [fmt]
     if args.no_csv:
         cfg.output.csv = False
     if args.no_json:
